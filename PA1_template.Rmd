@@ -43,7 +43,8 @@ max_interval
 ## Imputing missing values
 ```{r}
 number_of_nas <- sum(is.na(data$steps))
-
+number_of_nas
 ```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
