@@ -16,10 +16,10 @@ data <- read.csv('activity.csv')
 ## What is mean total number of steps taken per day?
 ```{r}
 total_steps_per_day <- aggregate(data$steps, by=list(data$date), FUN=sum)
-hist(total_steps_per_day$x)
+hist(total_steps_per_day$x, breaks=10, main="Histogram of Steps per Day", xlab="Total Steps per Day")
 
-mean_steps_per_day <- aggregate(data$steps, by=list(data$date), FUN=mean)
-median_steps_per_day <- aggregate(data$steps, by=list(data$date), FUN=median)
+mean_steps_per_day <- aggregate(steps ~ date, data, mean, na.action=na.omit)
+median_steps_per_day <- aggregate(steps ~ date, data, median, na.action=na.omit)
 
 mean_steps_per_day
 median_steps_per_day
@@ -28,23 +28,95 @@ median_steps_per_day
 
 ## What is the average daily activity pattern?
 ```{r}
-plot(data$steps, type='l')
+mean_steps_per_interval <- aggregate(steps ~ interval, data, mean, na.action=na.omit)
+plot(mean_steps_per_interval, type='l', xlab="Interval", ylab="Steps", main="Steps per Interval")
 ```
 
 The 5 minute interval with the maximum number of steps is obtained with:
 ```{r}
-max_date <- data$date[which.max(data$steps)]
-max_interval <- data$interval[which.max(data$steps)]
+max_interval = mean_steps_per_interval$interval[which.max(mean_steps_per_interval$steps)]
 
-max_date
 max_interval
 ```
 
 ## Imputing missing values
+
+Calculate and report the total number of missing values in the dataset (i.e. the total number of rows with NAs)
 ```{r}
 number_of_nas <- sum(is.na(data$steps))
 number_of_nas
 ```
 
+Devise a strategy for filling in all of the missing values in the dataset. The strategy does not need to be sophisticated. 
+
+NAs will be filled in by the mean of the 5-minute interval rounded to the nearest integer. 
+
+First we create a copy of the dataset.
+
+```{r}
+imputed_data = data
+```
+
+Next, we pull out the indices where the interval in the dataset match the interval in the mean step per interval data, and also match the NA values in the dataset.
+
+```{r}
+step_indices <- mean_steps_per_interval$interval == imputed_data$interval[is.na(data$steps)]
+```
+
+Finally, we replace the NA values with the mean steps per interval values.
+
+```{r}
+imputed_data$steps[is.na(imputed_data$steps)] = round(mean_steps_per_interval$steps[step_indices])
+```
+
+Now, we can create a new histogram based on the imputed data.
+
+```{r}
+imputed_total_steps_per_day <- aggregate(steps ~ date, imputed_data, sum)
+hist(imputed_total_steps_per_day$steps, breaks=10, main="Histogram of Steps per Day (imputed)", xlab="Total Steps per Day")
+```
+
+We do the same for a new mean / median
+
+```{r}
+imputed_mean_steps_per_day <- aggregate(steps ~ date, imputed_data, mean, na.action=na.omit)
+imputed_median_steps_per_day <- aggregate(steps ~ date, imputed_data, median, na.action=na.omit)
+
+imputed_mean_steps_per_day
+imputed_median_steps_per_day
+```
+
+Comparing the two histograms, we can see no material effect from imputing data.
+
+```{r}
+par(mfrow=c(1,2))
+hist(total_steps_per_day$x, breaks=10, main="Histogram of Steps per Day", xlab="Total Steps per Day")
+hist(imputed_total_steps_per_day$steps, breaks=10, main="Histogram of Steps per Day (imputed)", xlab="Total Steps per Day")
+```
+
+
 ## Are there differences in activity patterns between weekdays and weekends?
+
+To further explore the impact of weekday vs weekend activity, we can factor the data.
+
+```{r}
+imputed_data$day[weekdays(as.POSIXct(imputed_data$date)) %in% c("Monday", "Tuesday", "Wednesday", "Thursday", "Friday")] = "Weekday"
+imputed_data$day[weekdays(as.POSIXct(imputed_data$date)) %in% c("Saturday", "Sunday")] = "Weekend"
+
+factored_data = as.factor(imputed_data$day)
+```
+
+Finally, we plot the data based on weekday vs weekend.
+
+```{r}
+mean_steps_per_daytype <- aggregate(steps ~ interval + day, imputed_data, mean, na.action=na.omit)
+
+par(mfrow=c(2,1))
+par(mar=c(4,4,2,0))
+plot(mean_steps_per_daytype$steps[mean_steps_per_daytype$day == "Weekday"], type='l', xlab="Interval", ylab="Steps", main="Steps per Weekday")
+plot(mean_steps_per_daytype$steps[mean_steps_per_daytype$day == "Weekend"], type='l', xlab="Interval", ylab="Steps", main="Steps per Weekend")
+```
+
+
+
 
